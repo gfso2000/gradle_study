@@ -1,0 +1,177 @@
+apply plugin: 'java'
+apply plugin: 'war'
+apply plugin: 'eclipse-wtp'
+//apply plugin: 'jetty'
+apply plugin: 'org.akhikhl.gretty'
+apply plugin: 'js'
+apply plugin: 'css'
+
+buildscript {
+  repositories {
+    jcenter()
+  }
+
+  dependencies {
+    classpath 'org.akhikhl.gretty:gretty:+'
+    classpath 'com.eriwen:gradle-js-plugin:1.12.1'
+	classpath 'com.eriwen:gradle-css-plugin:1.11.1'
+  }
+}
+
+gretty {
+  port = 8080
+  contextPath = 'spring4'
+  servletContainer = 'jetty9'
+}
+
+// JDK 7
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+	compile 'ch.qos.logback:logback-classic:1.1.3'
+	compile 'org.apache.commons:commons-io:1.3.2'
+	
+	compile 'org.springframework:spring-context:4.1.6.RELEASE'
+	compile 'org.springframework:spring-context-support:4.1.6.RELEASE'
+	compile 'org.springframework:spring-webmvc:4.1.6.RELEASE'
+	compile 'org.springframework.security:spring-security-web:3.2.5.RELEASE'
+	compile 'org.springframework.security:spring-security-config:3.2.5.RELEASE'
+	compile 'org.springframework.security:spring-security-taglibs:3.2.5.RELEASE'
+
+	compile 'com.microsoft.sqlserver:sqljdbc4:4.1'
+	compile 'javax.servlet:jstl:1.2'
+	compile 'net.sf.ehcache:ehcache:2.9.0'
+	
+	//with hibernate + aop 
+	compile 'commons-dbcp:commons-dbcp:1.4'
+	compile 'org.hibernate:hibernate-core:4.2.11.Final'
+	compile 'org.springframework:spring-orm:4.1.6.RELEASE'
+	compile 'org.springframework:spring-aspects:4.1.6.RELEASE'
+	
+	//include in compile only, exclude in the war
+	providedCompile 'javax.servlet:servlet-api:2.5'
+	providedCompile 'javax.servlet.jsp:jsp-api:2.2'
+}
+
+//minify and then combine css js files start
+javascript.source {
+    custom {
+      js {
+         srcDir 'src/main/webapp/resources/core/js'
+         include "**/*.js"
+      }
+    }
+}
+css.source {
+    custom {
+      css {
+         srcDir 'src/main/webapp/resources/core/css'
+         include "**/*.css"
+      }
+    }
+}
+javascript.source.custom.js.files.eachWithIndex { jsFile, idx ->
+    tasks.create(name: "dominifyJs${idx}", type: com.eriwen.gradle.js.tasks.MinifyJsTask) {
+        if (jsFile.getParentFile().getName() != "js") {
+            source = jsFile
+            dest = "${buildDir}/tmp/js/" + jsFile.getParentFile().getName() + "/${jsFile.name}"
+            closure {
+                compilationLevel = 'SIMPLE_OPTIMIZATIONS'
+            }
+        } else {
+            source = jsFile
+            dest = "${buildDir}/tmp/js/${jsFile.name}"
+            closure {
+                compilationLevel = 'SIMPLE_OPTIMIZATIONS'
+            }
+        }
+    }
+}
+ 
+css.source.custom.css.files.eachWithIndex { cssFile, idx ->
+    tasks.create(name: "dominifyCss${idx}", type: com.eriwen.gradle.css.tasks.MinifyCssTask) {
+        if (cssFile.getParentFile().getName() != "css") {
+            source = cssFile
+            dest = "${buildDir}/tmp/css/" + cssFile.getParentFile().getName() + "/${cssFile.name}"
+            closure {
+                compilationLevel = 'SIMPLE_OPTIMIZATIONS'
+            }
+        } else {
+            source = cssFile
+            dest = "${buildDir}/tmp/css/${cssFile.name}"
+            closure {
+                compilationLevel = 'SIMPLE_OPTIMIZATIONS'
+            }
+        }
+    }
+}
+
+task individualJsMinify(dependsOn: tasks.matching { Task task -> task.name.startsWith("dominifyJs") })
+task individualCssMinify(dependsOn: tasks.matching { Task task -> task.name.startsWith("dominifyCss") })
+
+task combineMyCss(type: com.eriwen.gradle.js.tasks.CombineJsTask) {
+	dependsOn 'individualCssMinify'
+    source = ["${buildDir}/tmp/css/bootstrap.css", "${buildDir}/tmp/css/hello.css"]
+    dest = file("${buildDir}/tmp/css/final/all-css.css")
+}
+task combineMyM1Js(type: com.eriwen.gradle.js.tasks.CombineJsTask) {
+	dependsOn 'individualJsMinify'
+    source = ["${buildDir}/tmp/js/m1/m1_f1.js", "${buildDir}/tmp/js/m1/m1_f2.js"]
+    dest = file("${buildDir}/tmp/js/final/m1/m1_all.js")
+}
+task combineMyM2Js(type: com.eriwen.gradle.js.tasks.CombineJsTask) {
+	dependsOn 'individualJsMinify'
+    source = ["${buildDir}/tmp/js/m2/m2_f1.js", "${buildDir}/tmp/js/m2/m2_f2.js"]
+    dest = file("${buildDir}/tmp/js/final/m2/m2_all.js")
+}
+task combineMyOthersJs(type: com.eriwen.gradle.js.tasks.CombineJsTask) {
+	dependsOn 'individualJsMinify'
+    source = ["${buildDir}/tmp/js/hello.js", "${buildDir}/tmp/js/world.js"]
+    dest = file("${buildDir}/tmp/js/final/hello_all.js")
+}
+//minify and then combine css js files end
+
+//generate exploded war firstly
+task explodedWar(type: Copy) {
+  into "${buildDir}/exploded/spring.war"
+  with war
+}
+
+explodedWar.dependsOn 'combineMyCss', 'combineMyM1Js', 'combineMyM2Js', 'combineMyOthersJs'
+
+war {
+    archiveName 'spring.war'
+	dependsOn 'explodedWar'
+	
+	//only need the minified css, the original css are excluded
+	exclude 'resources/core/css/*'
+	from('src/main/webapp/resources/core/css') {
+	    exclude '**/*.css'
+	}
+	from('build/tmp/css/final') {
+	    include '**/*.css'
+	    into 'resources/core/css/'
+	}
+	//the minified js files are copied to 'min' folder
+	from('build/tmp/js/final') {
+	    include '**/*.js'
+	    into 'resources/core/js/min/'
+	}
+}
+
+//For Eclipse IDE only
+eclipse {
+  wtp {
+    component {
+      //define context path, default to project folder name
+      contextPath = 'spring4'
+    }
+  }
+}
+

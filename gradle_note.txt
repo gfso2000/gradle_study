@@ -1,0 +1,17 @@
+1. run command, it will generate an empty project:
+	gradle init --type java-library
+
+2. download 
+	http://www.mkyong.com/spring-mvc/gradle-spring-4-mvc-hello-world-example-annotation/
+
+--gradle eclipse, used to import to eclipse
+--run 'gradle compileJava', 'gradle eclipse', after imported new third-party jars
+--gradle clean build
+--gradle build
+--gradle build -x test, skip UT
+
+--install sqlserver jdbc jar
+mvn install:install-file -Dfile=C:\Users\jyu13\Desktop\test\sqljdbc41.jar -DgroupId=com.microsoft.sqlserver -DartifactId=sqljdbc4 -Dversion=4.1 -Dpackaging=jar
+
+--gradle minify js/css
+http://www.bhaweshkumar.com/blog/2014/08/29/minify-javascript-and-css-using-gradle/

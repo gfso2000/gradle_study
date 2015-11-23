@@ -1,0 +1,53 @@
+drop table user_attempts;
+drop table user_roles;
+drop table users;
+
+CREATE  TABLE users (
+  username VARCHAR(100) NOT NULL ,
+  password VARCHAR(100) NOT NULL ,
+  enabled TINYINT NOT NULL DEFAULT 1 ,
+  accountNonExpired TINYINT NOT NULL DEFAULT 1 ,
+  accountNonLocked TINYINT NOT NULL DEFAULT 1 ,
+  credentialsNonExpired TINYINT NOT NULL DEFAULT 1,
+  PRIMARY KEY (username)
+);
+
+CREATE TABLE user_roles (
+  user_role_id int NOT NULL identity(1, 1),
+  username varchar(100) NOT NULL,
+  role varchar(45) NOT NULL,
+  PRIMARY KEY (user_role_id),
+  CONSTRAINT uni_username_role UNIQUE (role,username),
+  CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES users (username)
+);
+
+CREATE INDEX fk_username_idx ON user_roles(username);
+    
+CREATE TABLE user_attempts (
+  id int NOT NULL identity(1, 1),
+  username varchar(100) NOT NULL,
+  attempts int NOT NULL,
+  lastModified datetime NULL,
+  PRIMARY KEY (id)
+);
+
+INSERT INTO users(username,password,enabled) VALUES ('mkyong','$2a$10$zVOqyShZF5j5pTsV0BQm6.H0mYMsBGnLeMS.TFxTcqIun2i/IKJ8i', 1);
+INSERT INTO users(username,password,enabled) VALUES ('alex','$2a$10$zVOqyShZF5j5pTsV0BQm6.H0mYMsBGnLeMS.TFxTcqIun2i/IKJ8i', 1);
+
+INSERT INTO user_roles (username, role) VALUES ('mkyong', 'ROLE_USER');
+INSERT INTO user_roles (username, role) VALUES ('mkyong', 'ROLE_ADMIN');
+INSERT INTO user_roles (username, role) VALUES ('alex', 'ROLE_USER');
+
+drop table persistent_logins;
+CREATE TABLE persistent_logins (
+    username varchar(64) not null,
+    series varchar(64) not null,
+    token varchar(64) not null,
+    last_used datetime not null,
+    PRIMARY KEY (series)
+);
+
+-- unlock all users;
+truncate table dbo.user_attempts;
+update users set accountNonLocked = '1';
+

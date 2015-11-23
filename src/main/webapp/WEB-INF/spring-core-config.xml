@@ -1,0 +1,39 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:context="http://www.springframework.org/schema/context"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:mvc="http://www.springframework.org/schema/mvc"
+  xmlns:aop="http://www.springframework.org/schema/aop"
+  xmlns:cache="http://www.springframework.org/schema/cache"
+  xsi:schemaLocation="
+        http://www.springframework.org/schema/beans     
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context.xsd 
+        http://www.springframework.org/schema/aop 
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/cache
+        http://www.springframework.org/schema/cache/spring-cache.xsd">
+ 
+  <context:component-scan base-package="com.mkyong.helloworld" />
+  
+  <!--  ehCache example  start-->
+  <cache:annotation-driven cache-manager="cacheManager" />
+  <bean id="cacheManager" class="org.springframework.cache.ehcache.EhCacheCacheManager">
+    <property name="cacheManager" ref="ehcache" />
+  </bean>
+  <bean id="ehcache" class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
+    <property name="configLocation" value="classpath:ehcache.xml" />
+    <property name="shared" value="true" />
+  </bean>
+  <!--  ehCache example  end-->
+  
+  <!--  singleton bean call prototype bean  start -->
+  <bean id="requestProcessor" class="com.mkyong.helloworld.beans.RequestProcessor">
+      <property name="validator" ref="validator"/>
+  </bean>
+  <bean id="validator" scope="prototype" class="com.mkyong.helloworld.beans.RequestValidator">
+      <aop:scoped-proxy/>
+  </bean>
+  <!--  singleton bean call prototype bean  end -->
+  
+</beans>

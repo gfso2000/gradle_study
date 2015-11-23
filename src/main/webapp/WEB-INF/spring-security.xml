@@ -1,0 +1,86 @@
+<beans:beans xmlns="http://www.springframework.org/schema/security"
+  xmlns:beans="http://www.springframework.org/schema/beans" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans
+  http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+  http://www.springframework.org/schema/security
+  http://www.springframework.org/schema/security/spring-security-3.2.xsd">
+
+  <http auto-config="true" use-expressions="true">
+    <intercept-url pattern="/admin**" access="hasRole('ROLE_ADMIN')" />
+    <!-- access denied page -->
+    <access-denied-handler error-page="/403" />
+    <form-login login-page="/login" 
+        default-target-url="/welcome"
+         authentication-failure-url="/login?error" 
+         username-parameter="username"
+         password-parameter="password"
+         login-processing-url="/auth/login_check"
+         authentication-success-handler-ref="savedRequestAwareAuthenticationSuccessHandler" />
+     <logout logout-success-url="/login?logout"  delete-cookies="JSESSIONID"/>
+     <!-- enable csrf protection -->
+     <csrf />
+     <!-- enable remember me customUserDetailsService -->
+     <remember-me token-validity-seconds="1209600"
+      remember-me-parameter="remember-me" 
+      data-source-ref="dataSource"  user-service-ref="hibernateUserDetailsService"/>
+  </http>
+  
+  <!-- If request parameter "targetUrl" is existed, then forward to this url --> 
+  <!-- For update login form -->
+  <beans:bean id="savedRequestAwareAuthenticationSuccessHandler"
+    class="org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler">
+    <beans:property name="targetUrlParameter" value="targetUrl" />
+  </beans:bean>
+  
+<!-- 
+  <authentication-manager>
+    <authentication-provider>
+      <user-service>
+         <user name="a" password="1" authorities="ROLE_USER" />
+      </user-service>
+    </authentication-provider>
+  </authentication-manager>
+   -->
+   <!-- 
+  <authentication-manager>
+    <authentication-provider>
+      <jdbc-user-service data-source-ref="dataSource"
+        users-by-username-query="select username,password, enabled from users where username=?"
+        authorities-by-username-query="select username, ROLE from user_roles where username =?  " />
+    </authentication-provider>
+  </authentication-manager>
+   -->
+
+  <beans:bean id="encoder"
+    class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder">
+    <beans:constructor-arg name="strength" value="11" />
+  </beans:bean>
+  
+  <beans:bean id="userAttemptsDao" class="com.mkyong.helloworld.dao.UserAttemptsDaoImpl" >
+    <beans:property name="dataSource" ref="dataSource" />
+  </beans:bean>
+  
+  <beans:bean id="authenticationProvider"
+    class="com.mkyong.helloworld.service.LimitLoginAuthenticationProvider">
+    <beans:property name="userDetailsService" ref="hibernateUserDetailsService" />
+    <beans:property name="userAttemptsDao" ref="userAttemptsDao" />
+    <beans:property name="passwordEncoder" ref="encoder" />
+  </beans:bean>
+
+  <!-- hibernate service start -->
+  <beans:bean id="userDao" class="com.mkyong.helloworld.dao.UserDaoImpl">
+    <beans:property name="sessionFactory" ref="sessionFactory" />
+  </beans:bean>
+
+  <beans:bean id="hibernateUserDetailsService" 
+                class="com.mkyong.helloworld.service.HibernateUserDetailsService">
+    <beans:property name="userDao" ref="userDao" />
+  </beans:bean>
+  <!-- hibernate service end -->
+  
+  <authentication-manager>
+    <authentication-provider ref="authenticationProvider" />
+  </authentication-manager>
+   
+</beans:beans>
